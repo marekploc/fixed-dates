@@ -1,0 +1,419 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0a0a0a">
+<title>Fixed Dates</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+html { background: #0a0a0a; }
+body { margin: 0; }
+
+/* Layout: mirrors sqne.eu. Near-black field, one acid-lime accent, light Inter headlines with a grey second half, mono uppercase labels, square-cornered controls, "// 00" section eyebrows. Single dark look by choice. */
+:root {
+  --bg: #0a0a0a;
+  --surface: #111111;
+  --surface-2: #181818;
+  --ink: #f4f4f1;
+  --muted: #8d8d88;
+  --line: #232323;
+  --accent: #d6ff3d;
+  --accent-ink: #0a0a0a;
+  --ok: #f4f4f1;
+  --miss: #6f6f6a;
+  --today: #d6ff3d;
+  --f-display: "Inter", system-ui, sans-serif;
+  --f-body: "Inter", system-ui, sans-serif;
+  --f-mono: "JetBrains Mono", ui-monospace, monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--f-body); font-weight: 300; font-size: 16px; line-height: 1.55; padding-inline: 20px; padding-block: 0 80px; }
+.wrap { max-width: 1040px; margin: 0 auto; display: grid; gap: 56px; }
+.mono { font-family: var(--f-mono); font-size: 12px; letter-spacing: .16em; text-transform: uppercase; color: var(--muted); font-weight: 400; }
+.eyebrow { font-family: var(--f-mono); font-size: 12px; letter-spacing: .16em; text-transform: uppercase; color: var(--accent); }
+
+.topbar { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding-block: 28px; border-bottom: 1px solid var(--line); margin-inline: -20px; padding-inline: 20px; }
+.topbar-in { width: 100%; max-width: 1040px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; }
+.logo { font-family: var(--f-mono); font-weight: 500; font-size: 15px; letter-spacing: .14em; text-transform: uppercase; display: flex; align-items: center; gap: 12px; }
+.logo i { width: 14px; height: 14px; background: var(--accent); display: inline-block; }
+.logo span { color: var(--muted); }
+.today-stamp { font-family: var(--f-mono); font-size: 12px; letter-spacing: .16em; text-transform: uppercase; color: var(--muted); }
+.today-stamp b { color: var(--ink); font-weight: 500; }
+
+.intro { display: grid; gap: 24px; padding-top: 24px; }
+.tag { justify-self: start; font-family: var(--f-mono); font-size: 12px; letter-spacing: .16em; text-transform: uppercase; color: var(--accent); border: 1px solid var(--line); border-radius: 999px; padding: 7px 16px; }
+h1 { font-weight: 300; font-size: clamp(44px, 8.5vw, 96px); line-height: 1.02; letter-spacing: -.025em; margin: 0; max-width: 14ch; text-wrap: balance; }
+h1 em { font-style: normal; color: var(--muted); }
+.lede { max-width: 56ch; color: var(--muted); font-size: clamp(17px, 2.2vw, 22px); margin: 0; }
+
+.hero { border: 1px solid var(--line); background: var(--surface); padding: clamp(22px, 4vw, 44px); display: grid; grid-template-columns: auto 1fr; gap: 14px clamp(24px, 5vw, 64px); align-items: center; }
+.hero .count { font-weight: 300; font-size: clamp(104px, 22vw, 200px); line-height: .82; letter-spacing: -.04em; color: var(--accent); font-variant-numeric: tabular-nums; }
+.hero .count small { display: block; font-family: var(--f-mono); font-size: 12px; letter-spacing: .16em; text-transform: uppercase; color: var(--muted); margin-top: 18px; letter-spacing: .16em; font-weight: 400; }
+.hero .what { min-width: 0; display: grid; gap: 10px; }
+.hero h2 { font-weight: 300; font-size: clamp(28px, 5vw, 48px); line-height: 1.08; letter-spacing: -.02em; margin: 0; overflow-wrap: anywhere; }
+.hero p { margin: 0; color: var(--muted); overflow-wrap: anywhere; }
+.hero.empty { grid-template-columns: 1fr; }
+@media (max-width: 600px) { .hero { grid-template-columns: 1fr; } }
+
+.sec-head { display: grid; gap: 8px; margin-bottom: 20px; }
+.sec-head h2 { font-weight: 300; font-size: clamp(26px, 4vw, 40px); letter-spacing: -.02em; margin: 0; }
+
+.runway { border-top: 1px solid var(--line); padding-top: 28px; }
+.runway svg { width: 100%; height: auto; display: block; overflow: visible; }
+.runway .legend { display: flex; gap: 20px; flex-wrap: wrap; margin-top: 10px; }
+.dot { display: inline-block; width: 9px; height: 9px; background: currentColor; margin-right: 8px; }
+
+.tally { display: grid; grid-template-columns: repeat(3, 1fr); border: 1px solid var(--line); }
+.tally div { padding: 20px 22px; border-right: 1px solid var(--line); }
+.tally div:last-child { border-right: none; }
+.tally b { display: block; font-weight: 300; font-size: clamp(44px, 8vw, 72px); line-height: 1; letter-spacing: -.03em; margin-top: 10px; font-variant-numeric: tabular-nums; }
+.tally .t-ok b { color: var(--ok); } .tally .t-miss b { color: var(--miss); } .tally .t-ahead b { color: var(--accent); }
+
+form { display: grid; grid-template-columns: 1fr 210px; gap: 16px; }
+form .full { grid-column: 1 / -1; }
+label { display: grid; gap: 8px; min-width: 0; }
+input, textarea { font: inherit; font-weight: 300; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 0; padding: 14px 16px; width: 100%; min-width: 0; color-scheme: dark; }
+input::placeholder, textarea::placeholder { color: #55554f; }
+textarea { resize: vertical; min-height: 52px; }
+input:focus-visible, textarea:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.form-foot { display: flex; align-items: center; justify-content: space-between; gap: 20px; flex-wrap: wrap; }
+.form-foot p { margin: 0; color: var(--muted); font-size: 14px; flex: 1 1 280px; max-width: 60ch; }
+button { font-family: var(--f-mono); font-size: 12px; letter-spacing: .14em; text-transform: uppercase; cursor: pointer; border-radius: 0; border: 1px solid var(--line); background: var(--surface); color: var(--ink); padding: 12px 18px; }
+button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 500; padding: 18px 32px; }
+button.primary:hover { filter: brightness(1.08); }
+button:disabled { opacity: .45; cursor: not-allowed; }
+.err { color: var(--ink); font-size: 14px; min-height: 18px; margin: 0; }
+@media (max-width: 600px) { form { grid-template-columns: 1fr; } .tally div { padding: 16px 14px; } }
+
+section.group { display: grid; gap: 0; }
+section.group > .mono { display: flex; justify-content: space-between; padding-bottom: 14px; border-bottom: 1px solid var(--line); }
+.row { display: grid; grid-template-columns: 92px 1fr auto; gap: 10px 24px; align-items: center; border-bottom: 1px solid var(--line); padding: 22px 0; position: relative; }
+.row::before { content: ""; position: absolute; left: -20px; top: 22px; bottom: 22px; width: 3px; background: var(--line); }
+.row.s-ahead::before { background: var(--accent); }
+.row.s-today::before { background: var(--today); }
+.row.s-done::before { background: var(--ok); }
+.row.s-miss::before { background: var(--miss); }
+.date { text-align: left; }
+.date .d { font-weight: 300; font-size: 56px; line-height: .95; letter-spacing: -.04em; display: block; font-variant-numeric: tabular-nums; }
+.date .m { font-family: var(--f-mono); font-size: 11px; letter-spacing: .16em; text-transform: uppercase; color: var(--muted); display: block; margin-top: 8px; }
+.body { min-width: 0; }
+.body h3 { margin: 0; font-weight: 400; font-size: 20px; letter-spacing: -.01em; overflow-wrap: anywhere; }
+.body p { margin: 4px 0 0; color: var(--muted); font-size: 15px; overflow-wrap: anywhere; }
+.meta { display: flex; flex-direction: column; align-items: flex-end; gap: 10px; }
+.chip { font-family: var(--f-mono); font-size: 11px; letter-spacing: .14em; text-transform: uppercase; padding: 5px 10px; border: 1px solid currentColor; white-space: nowrap; }
+.s-ahead .chip { color: var(--accent); } .s-today .chip { color: var(--accent-ink); background: var(--accent); border-color: var(--accent); } .s-done .chip { color: var(--ok); } .s-miss .chip { color: var(--miss); }
+.row.s-miss .body h3 { color: var(--muted); text-decoration: line-through; text-decoration-thickness: 1px; text-decoration-color: var(--muted); }
+.row.s-miss .date .d { color: var(--miss); }
+.link { background: none; border: none; padding: 0; color: var(--muted); text-decoration: underline; text-underline-offset: 3px; font-size: 11px; }
+.link.confirm { color: var(--accent); font-weight: 500; }
+@media (max-width: 600px) { .row { grid-template-columns: 70px 1fr; } .row::before { left: -20px; } .meta { grid-column: 1 / -1; flex-direction: row; justify-content: space-between; align-items: center; } .date .d { font-size: 44px; } }
+.lists { display: grid; gap: 56px; }
+footer { border-top: 1px solid var(--line); padding-top: 24px; }
+
+.gate { max-width: 1040px; margin: 0 auto; padding-block: 80px; display: grid; gap: 28px; justify-items: start; }
+#app[hidden], .gate[hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<div id="gate" class="gate">
+  <div class="logo"><i></i>FIXED <span>//</span> DATES</div>
+  <h1>Fixed dates. <em>No exceptions.</em></h1>
+  <p class="lede">Sign in to open your list.</p>
+  <button class="primary" id="signIn" type="button">Sign in with Google</button>
+  <p class="err" id="gateErr" role="alert"></p>
+</div>
+<div id="app" hidden>
+<div class="topbar"><div class="topbar-in">
+  <div class="logo"><i></i>FIXED <span>//</span> DATES</div>
+  <div class="today-stamp">Today · <b id="todayStamp"></b> · <button class="link" id="signOut" type="button">Sign out</button></div>
+</div></div>
+<div class="wrap">
+  <div class="intro">
+    <div class="tag">[ A DATE, ONCE FIXED, STAYS ]</div>
+    <h1>Fixed dates. <em>No exceptions.</em></h1>
+    <p class="lede">Every task carries one date, set when it is saved. It is done on or before that day, or it is missed, and the record says so.</p>
+  </div>
+
+  <div id="hero"></div>
+
+  <div class="runway">
+    <div class="sec-head"><span class="eyebrow">// 00 Runway</span><h2>Thirty days back, one hundred twenty ahead</h2></div>
+    <svg id="runway" viewBox="0 0 1000 96" role="img" aria-label="Timeline of fixed dates around today"></svg>
+    <div class="legend mono">
+      <span style="color:var(--accent)"><i class="dot"></i>Ahead</span>
+      <span style="color:var(--today)"><i class="dot"></i>Today</span>
+      <span style="color:var(--ok)"><i class="dot"></i>Done</span>
+      <span style="color:var(--miss)"><i class="dot"></i>Missed</span>
+      <span id="runwayNote" style="margin-left:auto"></span>
+    </div>
+  </div>
+
+  <div class="tally">
+    <div class="t-ahead"><span class="mono">Ahead</span><b id="nAhead">0</b></div>
+    <div class="t-ok"><span class="mono">Done</span><b id="nDone">0</b></div>
+    <div class="t-miss"><span class="mono">Missed</span><b id="nMiss">0</b></div>
+  </div>
+
+  <div>
+    <div class="sec-head"><span class="eyebrow">// 01 Lock a date</span><h2>Add a task</h2></div>
+  <form id="addForm" autocomplete="off">
+    <label><span class="mono">Task</span><input id="fTitle" maxlength="120" required placeholder="What has to happen"></label>
+    <label><span class="mono">Fixed date</span><input id="fDate" type="date" required></label>
+    <label class="full"><span class="mono">Note (optional)</span><textarea id="fNote" maxlength="300" rows="1" placeholder="Who, where, what counts as done"></textarea></label>
+    <div class="full form-foot">
+      <p>Once locked in, the date cannot be moved. A task is either done on or before its date, or it is missed for good. Typos can be removed within 15 minutes.</p>
+      <button class="primary" id="fSubmit" type="submit">Lock it in</button>
+    </div>
+    <p class="err full" id="fErr" role="alert"></p>
+  </form>
+
+  </div>
+
+  <div id="lists" class="lists"></div>
+</div>
+
+</div>
+<script>
+(function () {
+  var MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  var DAYS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  var TYPO_MS = 15 * 60 * 1000;
+  var db = null, tasks = [], armed = null, saving = false;
+
+  function pad(n) { return String(n).padStart(2, '0'); }
+  function ymd(d) { return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
+  function parse(s) { var p = s.split('-').map(Number); return new Date(p[0], p[1] - 1, p[2]); }
+  function today() { return ymd(new Date()); }
+  function diff(a, b) { return Math.round((parse(b) - parse(a)) / 86400000); }
+  function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'})[c]; }); }
+  function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+  function longDate(s) { var d = parse(s); return DAYS[d.getDay()] + ' ' + d.getDate() + ' ' + MONTHS[d.getMonth()] + ' ' + d.getFullYear(); }
+
+  function status(t, now) {
+    if (t.done) return 'done';
+    if (t.date < now) return 'miss';
+    if (t.date === now) return 'today';
+    return 'ahead';
+  }
+
+  function renderHero(list, now) {
+    var host = document.getElementById('hero');
+    host.innerHTML = '';
+    var next = list.filter(function (t) { return t.st === 'today' || t.st === 'ahead'; })
+      .sort(function (a, b) { return a.date < b.date ? -1 : 1; })[0];
+    var box = el('div', 'hero' + (next ? '' : ' empty'));
+    if (!next) {
+      var w = el('div', 'what');
+      w.appendChild(el('span', 'mono', 'Next fixed date'));
+      w.appendChild(el('h2', null, list.length ? 'Nothing ahead.' : 'Nothing is fixed yet.'));
+      w.appendChild(el('p', null, list.length ? 'Every date so far is done or missed. Lock in the next one below.' : 'Add the first task and date below. Once locked in, the date stays.'));
+      box.appendChild(w);
+    } else {
+      var n = diff(now, next.date);
+      var c = el('div', 'count', n === 0 ? '0' : String(n));
+      c.appendChild(el('small', null, n === 0 ? 'Today' : (n === 1 ? 'Day left' : 'Days left')));
+      var w2 = el('div', 'what');
+      w2.appendChild(el('span', 'mono', 'Next fixed date · ' + longDate(next.date)));
+      w2.appendChild(el('h2', null, next.title));
+      if (next.note) w2.appendChild(el('p', null, next.note));
+      box.appendChild(c); box.appendChild(w2);
+    }
+    host.appendChild(box);
+  }
+
+  function renderRunway(list, now) {
+    var svg = document.getElementById('runway');
+    var BACK = 30, FWD = 120, L = 20, R = 980, Y = 44;
+    function x(offset) { return L + ((offset + BACK) / (BACK + FWD)) * (R - L); }
+    var cs = getComputedStyle(document.documentElement);
+    var out = '';
+    out += '<line x1="' + L + '" y1="' + Y + '" x2="' + R + '" y2="' + Y + '" stroke="var(--line)" stroke-width="2"/>';
+    var base = parse(now);
+    for (var i = -BACK; i <= FWD; i++) {
+      var d = new Date(base.getFullYear(), base.getMonth(), base.getDate() + i);
+      if (d.getDate() === 1) {
+        out += '<line x1="' + x(i) + '" y1="' + (Y - 8) + '" x2="' + x(i) + '" y2="' + (Y + 8) + '" stroke="var(--muted)" stroke-width="1"/>';
+        out += '<text x="' + x(i) + '" y="' + (Y + 28) + '" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="12" fill="var(--muted)">' + MONTHS[d.getMonth()].toUpperCase() + '</text>';
+      }
+    }
+    out += '<line x1="' + x(0) + '" y1="10" x2="' + x(0) + '" y2="80" stroke="var(--ink)" stroke-width="2"/>';
+    out += '<text x="' + x(0) + '" y="8" text-anchor="middle" font-family="JetBrains Mono, monospace" font-size="12" fill="var(--ink)">TODAY</text>';
+    var colors = { ahead: 'var(--accent)', today: 'var(--today)', done: 'var(--ok)', miss: 'var(--miss)' };
+    var inView = 0;
+    list.forEach(function (t) {
+      var o = diff(now, t.date);
+      if (o < -BACK || o > FWD) return;
+      inView++;
+      var cx = x(o);
+      out += '<g><title>' + esc(t.title) + ' · ' + esc(longDate(t.date)) + '</title>' +
+        '<line x1="' + cx + '" y1="' + (Y - 18) + '" x2="' + cx + '" y2="' + Y + '" stroke="' + colors[t.st] + '" stroke-width="2"/>' +
+        '<circle cx="' + cx + '" cy="' + (Y - 20) + '" r="7" fill="' + colors[t.st] + '" stroke="var(--surface)" stroke-width="2"/></g>';
+    });
+    svg.innerHTML = out;
+    document.getElementById('runwayNote').textContent = inView + ' in view';
+  }
+
+  function makeRow(t, now) {
+    var row = el('div', 'row s-' + t.st);
+    var d = parse(t.date);
+    var date = el('div', 'date');
+    date.appendChild(el('span', 'd', String(d.getDate())));
+    date.appendChild(el('span', 'm', MONTHS[d.getMonth()] + ' ' + String(d.getFullYear()).slice(2)));
+    var body = el('div', 'body');
+    body.appendChild(el('h3', null, t.title));
+    var sub = DAYS[d.getDay()] + (t.note ? ' · ' + t.note : '');
+    body.appendChild(el('p', null, sub));
+    var meta = el('div', 'meta');
+    var n = diff(now, t.date);
+    var label;
+    if (t.st === 'done') label = 'Done ' + (t.doneOn === t.date ? 'on the day' : (diff(t.doneOn, t.date) + ' d early'));
+    else if (t.st === 'miss') label = 'Missed · ' + Math.abs(n) + ' d ago';
+    else if (t.st === 'today') label = 'Due today';
+    else label = 'In ' + n + (n === 1 ? ' day' : ' days');
+    meta.appendChild(el('span', 'chip', label));
+    if (t.st === 'today' || t.st === 'ahead') {
+      var b = el('button', 'link' + (armed === t.id ? ' confirm' : ''), armed === t.id ? 'Confirm: it is done' : 'Mark done');
+      b.type = 'button';
+      b.addEventListener('click', function () { onDone(t); });
+      meta.appendChild(b);
+    }
+    if (t.createdAt && Date.now() - t.createdAt < TYPO_MS) {
+      var r = el('button', 'link', 'Remove (typo)');
+      r.type = 'button';
+      r.addEventListener('click', function () { onRemove(t); });
+      meta.appendChild(r);
+    }
+    row.appendChild(date); row.appendChild(body); row.appendChild(meta);
+    return row;
+  }
+
+  function group(title, items, now) {
+    if (!items.length) return null;
+    var s = el('section', 'group');
+    var h = el('div', 'mono'); h.appendChild(el('span', null, title)); h.appendChild(el('span', null, String(items.length)));
+    s.appendChild(h);
+    items.forEach(function (t) { s.appendChild(makeRow(t, now)); });
+    return s;
+  }
+
+  function render() {
+    var now = today();
+    document.getElementById('todayStamp').textContent = longDate(now);
+    var list = tasks.map(function (t) { var c = Object.assign({}, t); c.st = status(t, now); return c; });
+    renderHero(list, now);
+    renderRunway(list, now);
+    var by = function (s) { return list.filter(function (t) { return t.st === s; }); };
+    var asc = function (a, b) { return a.date < b.date ? -1 : 1; };
+    var desc = function (a, b) { return a.date < b.date ? 1 : -1; };
+    document.getElementById('nAhead').textContent = by('ahead').length + by('today').length;
+    document.getElementById('nDone').textContent = by('done').length;
+    document.getElementById('nMiss').textContent = by('miss').length;
+    var host = document.getElementById('lists');
+    host.innerHTML = '';
+    
+    [group('Today', by('today'), now), group('Ahead', by('ahead').sort(asc), now),
+     group('Done', by('done').sort(desc), now), group('Missed', by('miss').sort(desc), now)]
+      .forEach(function (g) { if (g) host.appendChild(g); });
+  }
+
+  function onDone(t) {
+    if (!db) return;
+    if (armed !== t.id) { armed = t.id; render(); setTimeout(function () { if (armed === t.id) { armed = null; render(); } }, 5000); return; }
+    armed = null;
+    var now = today();
+    if (t.date < now) { render(); return; }
+    db.collection('tasks').doc(t.id).update({ done: true, doneOn: now }).catch(function () {});
+  }
+  function onRemove(t) {
+    if (!db) return;
+    if (!t.createdAt || Date.now() - t.createdAt >= TYPO_MS) { render(); return; }
+    db.collection('tasks').doc(t.id).delete().catch(function () {});
+  }
+
+  var form = document.getElementById('addForm'), err = document.getElementById('fErr');
+  var dateInput = document.getElementById('fDate');
+  function setMin() { dateInput.min = today(); }
+  setMin();
+  form.addEventListener('submit', function (e) {
+    e.preventDefault();
+    err.textContent = '';
+    if (!db) { err.textContent = 'Saving is not available in this view.'; return; }
+    var title = document.getElementById('fTitle').value.trim();
+    var date = dateInput.value;
+    var note = document.getElementById('fNote').value.trim();
+    if (!title) { err.textContent = 'Give the task a name.'; return; }
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) { err.textContent = 'Pick a date.'; return; }
+    if (date < today()) { err.textContent = 'A fixed date cannot be in the past.'; return; }
+    if (saving) return;
+    saving = true;
+    var id = 't' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+    db.collection('tasks').doc(id).set({ title: title, date: date, note: note, done: false, createdAt: Date.now() })
+      .then(function () { form.reset(); setMin(); })
+      .catch(function () { err.textContent = 'Could not save. Try again in a moment.'; })
+      .then(function () { saving = false; });
+  });
+
+  render();
+  setInterval(function () { setMin(); render(); }, 60000);
+
+  window.FD = {
+    setDb: function (d) { db = d; document.getElementById('fSubmit').disabled = !d; },
+    setTasks: function (list) { tasks = list.filter(function (v) { return v.title && v.date; }); render(); },
+    setError: function (m) { err.textContent = m; }
+  };
+})();
+</script>
+<script type="module">
+// 1. Paste your own Firebase web-app config here (see SETUP.md, step 5).
+const firebaseConfig = {
+  apiKey: "PASTE_API_KEY",
+  authDomain: "PASTE_PROJECT_ID.firebaseapp.com",
+  projectId: "PASTE_PROJECT_ID",
+  appId: "PASTE_APP_ID"
+};
+
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
+import { getAuth, onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signOut } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
+import { getFirestore, collection, doc, onSnapshot, setDoc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const fs = getFirestore(app);
+const gate = document.getElementById('gate');
+const appEl = document.getElementById('app');
+const gateErr = document.getElementById('gateErr');
+let unsub = null;
+
+document.getElementById('signIn').addEventListener('click', async () => {
+  gateErr.textContent = '';
+  try { await signInWithPopup(auth, new GoogleAuthProvider()); }
+  catch (e) { gateErr.textContent = 'Sign-in failed. Check SETUP.md, step 4, and try again.'; }
+});
+document.getElementById('signOut').addEventListener('click', () => signOut(auth));
+
+onAuthStateChanged(auth, (user) => {
+  if (unsub) { unsub(); unsub = null; }
+  if (!user) { gate.hidden = false; appEl.hidden = true; window.FD.setDb(null); return; }
+  gate.hidden = true; appEl.hidden = false;
+  window.FD.setDb({
+    collection: () => ({
+      doc: (id) => ({
+        set: (d) => setDoc(doc(fs, 'tasks', id), d),
+        update: (d) => updateDoc(doc(fs, 'tasks', id), d),
+        delete: () => deleteDoc(doc(fs, 'tasks', id))
+      })
+    })
+  });
+  unsub = onSnapshot(collection(fs, 'tasks'),
+    (snap) => window.FD.setTasks(snap.docs.map((d) => Object.assign({ id: d.id }, d.data()))),
+    (e) => window.FD.setError(e.code === 'permission-denied'
+      ? 'This Google account is not allowed to open the list. Check the email in firestore.rules.'
+      : 'Live updates stopped. Reload the page.'));
+});
+</script>
+</body>
+</html>
