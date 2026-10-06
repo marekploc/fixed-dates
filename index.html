@@ -28,6 +28,7 @@ body { margin: 0; }
   --ok: #f4f4f1;
   --miss: #6f6f6a;
   --today: #d6ff3d;
+  --meet: #a9b8d4;
   --f-display: "Inter", system-ui, sans-serif;
   --f-body: "Inter", system-ui, sans-serif;
   --f-mono: "JetBrains Mono", ui-monospace, monospace;
@@ -142,6 +143,18 @@ footer { border-top: 1px solid var(--line); padding-top: 24px; }
 .dayhead { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; padding: 28px 0 14px; border-bottom: 1px solid var(--line); }
 .dayhead h3 { margin: 0; font-weight: 300; font-size: clamp(22px, 4vw, 32px); letter-spacing: -.02em; }
 .empty-day { color: var(--muted); margin: 18px 0 0; }
+.s-meet::before { background: var(--meet) !important; }
+.row.s-meet .chip { color: var(--meet); }
+.row.s-mpast::before { background: var(--line) !important; }
+.row.s-mpast .body h3, .row.s-mpast .date .d { color: var(--muted); }
+.row.s-mpast .chip { color: var(--miss); }
+.kind { display: flex; margin-bottom: 20px; }
+.kind .seg button { padding: 11px 22px; }
+#meetForm[hidden], #addForm[hidden] { display: none !important; }
+#meetForm { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+#meetForm .full { grid-column: 1 / -1; }
+.times { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; grid-column: 1 / -1; }
+@media (max-width: 600px) { #meetForm { grid-template-columns: 1fr; } .times { grid-template-columns: 1fr 1fr; } .times label:first-child { grid-column: 1 / -1; } }
 #month[hidden], #lists[hidden], .cal-nav[hidden] { display: none !important; }
 @media (max-width: 600px) { .seg button { padding: 11px 16px; } .cell { padding: 6px; font-size: 14px; } }
 
@@ -190,7 +203,11 @@ footer { border-top: 1px solid var(--line); padding-top: 24px; }
   </div>
 
   <div>
-    <div class="sec-head"><span class="eyebrow">// 01 Lock a date</span><h2>Add a task</h2></div>
+    <div class="sec-head"><span class="eyebrow">// 01 Lock a date</span><h2>Add a task or meeting</h2></div>
+  <div class="kind"><div class="seg" role="group" aria-label="What to add">
+    <button type="button" id="kTask" aria-pressed="true">Task</button>
+    <button type="button" id="kMeet" aria-pressed="false">Meeting</button>
+  </div></div>
   <form id="addForm" autocomplete="off">
     <label><span class="mono">Task</span><input id="fTitle" maxlength="120" required placeholder="What has to happen"></label>
     <label><span class="mono">Fixed date</span><input id="fDate" type="date" required></label>
@@ -200,6 +217,21 @@ footer { border-top: 1px solid var(--line); padding-top: 24px; }
       <button class="primary" id="fSubmit" type="submit">Lock it in</button>
     </div>
     <p class="err full" id="fErr" role="alert"></p>
+  </form>
+  <form id="meetForm" autocomplete="off" hidden>
+    <label><span class="mono">With whom</span><input id="mWith" maxlength="120" required placeholder="Person or people"></label>
+    <label><span class="mono">Subject (optional)</span><input id="mTopic" maxlength="120" placeholder="What it is about"></label>
+    <div class="times">
+      <label><span class="mono">Date</span><input id="mDate" type="date" required></label>
+      <label><span class="mono">From</span><input id="mFrom" type="time" required></label>
+      <label><span class="mono">To</span><input id="mTo" type="time" required></label>
+    </div>
+    <label class="full"><span class="mono">Where (optional)</span><input id="mPlace" maxlength="120" placeholder="Place or link"></label>
+    <div class="full form-foot">
+      <p>Unlike tasks, meetings can be cancelled at any time. To change one, cancel it and add it again.</p>
+      <button class="primary" id="mSubmit" type="submit">Add meeting</button>
+    </div>
+    <p class="err full" id="mErr" role="alert"></p>
   </form>
 
   </div>
@@ -229,8 +261,8 @@ footer { border-top: 1px solid var(--line); padding-top: 24px; }
   var MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   var DAYS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
   var TYPO_MS = 15 * 60 * 1000;
-  var db = null, tasks = [], armed = null, saving = false;
-  var view = 'schedule', selDay = null, mY = null, mM = null;
+  var db = null, tasks = [], meetings = [], armed = null, saving = false;
+  var view = 'schedule', kind = 'task', selDay = null, mY = null, mM = null;
   try { if (localStorage.getItem('fd-view') === 'month') view = 'month'; } catch (e) {}
 
   function pad(n) { return String(n).padStart(2, '0'); }
@@ -306,7 +338,30 @@ footer { border-top: 1px solid var(--line); padding-top: 24px; }
     document.getElementById('runwayNote').textContent = inView + ' in view';
   }
 
+  function makeMeetRow(t, now) {
+    var row = el('div', 'row s-meet' + (t.st === 'mpast' ? ' s-mpast' : ''));
+    var d = parse(t.date);
+    var date = el('div', 'date');
+    date.appendChild(el('span', 'd', String(d.getDate())));
+    date.appendChild(el('span', 'm', MONTHS[d.getMonth()] + ' ' + d.getFullYear()));
+    var body = el('div', 'body');
+    body.appendChild(el('h3', null, t.person));
+    var sub = DAYS[d.getDay()] + (t.topic ? ' \u00b7 ' + t.topic : '') + (t.place ? ' \u00b7 ' + t.place : '');
+    body.appendChild(el('p', null, sub));
+    var meta = el('div', 'meta');
+    meta.appendChild(el('span', 'chip', t.start + '\u2013' + t.end));
+    if (t.st !== 'mpast') {
+      var b = el('button', 'link' + (armed === t.id ? ' confirm' : ''), armed === t.id ? 'Confirm: cancel it' : 'Cancel meeting');
+      b.type = 'button';
+      b.addEventListener('click', function () { onCancel(t); });
+      meta.appendChild(b);
+    }
+    row.appendChild(date); row.appendChild(body); row.appendChild(meta);
+    return row;
+  }
+
   function makeRow(t, now) {
+    if (t.kind === 'meet') return makeMeetRow(t, now);
     var row = el('div', 'row s-' + t.st);
     var d = parse(t.date);
     var date = el('div', 'date');
@@ -352,43 +407,46 @@ footer { border-top: 1px solid var(--line); padding-top: 24px; }
   function render() {
     var now = today();
     document.getElementById('todayStamp').textContent = longDate(now);
-    var list = tasks.map(function (t) { var c = Object.assign({}, t); c.st = status(t, now); return c; });
+    var list = tasks.map(function (t) { var c = Object.assign({}, t); c.st = status(t, now); c.kind = 'task'; return c; });
+    var nowT = pad(new Date().getHours()) + ':' + pad(new Date().getMinutes());
+    var mlist = meetings.map(function (m) {
+      var c = Object.assign({}, m); c.kind = 'meet';
+      c.st = (m.date < now || (m.date === now && m.end <= nowT)) ? 'mpast' : (m.date === now ? 'mtoday' : 'mahead');
+      return c;
+    });
+    var all = list.concat(mlist);
     renderHero(list, now);
     renderRunway(list, now);
     var by = function (s) { return list.filter(function (t) { return t.st === s; }); };
-    var asc = function (a, b) { return a.date < b.date ? -1 : 1; };
-    var desc = function (a, b) { return a.date < b.date ? 1 : -1; };
+    var asc = function (a, b) { var x = a.date + (a.start || ''), y = b.date + (b.start || ''); return x < y ? -1 : x > y ? 1 : 0; };
+    var desc = function (a, b) { return asc(b, a); };
+    var byAll = function (s) { return all.filter(function (t) { return t.st === s; }); };
     document.getElementById('nAhead').textContent = by('ahead').length + by('today').length;
     document.getElementById('nDone').textContent = by('done').length;
     document.getElementById('nMiss').textContent = by('miss').length;
     var host = document.getElementById('lists');
     host.innerHTML = '';
     var weeks = {}, order = [];
-    by('ahead').sort(asc).forEach(function (t) {
+    byAll('ahead').concat(byAll('mahead')).sort(asc).forEach(function (t) {
       var k = weekStart(t.date);
       if (!weeks[k]) { weeks[k] = []; order.push(k); }
       weeks[k].push(t);
     });
-    var groups = [group('Today', by('today'), now)];
+    var groups = [group('Today', by('today').concat(byAll('mtoday')).sort(asc), now)];
     order.forEach(function (k) { groups.push(group(weekLabel(k, now), weeks[k], now)); });
-    groups.push(group('Done', by('done').sort(desc), now), group('Missed', by('miss').sort(desc), now));
+    groups.push(group('Done', by('done').sort(desc), now), group('Missed', by('miss').sort(desc), now), group('Past meetings', byAll('mpast').sort(desc), now));
     groups.forEach(function (g) { if (g) host.appendChild(g); });
-    renderMonth(list, now);
+    renderMonth(all, now);
     applyView();
   }
 
-  function weekStart(s) { var d = parse(s); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return ymd(d); }
-  function isoWeek(s) {
-    var d = parse(s); d.setDate(d.getDate() + 3 - ((d.getDay() + 6) % 7));
-    var w1 = new Date(d.getFullYear(), 0, 4);
-    return 1 + Math.round(((d - w1) / 86400000 - 3 + ((w1.getDay() + 6) % 7)) / 7);
-  }
+  function weekStart(s) { var d = parse(s); d.setDate(d.getDate() - d.getDay()); return ymd(d); }
   function weekLabel(k, now) {
     var a = parse(k), b = parse(k); b.setDate(b.getDate() + 6);
     var range = a.getDate() + (a.getMonth() !== b.getMonth() ? ' ' + MONTHS[a.getMonth()] : '') + ' \u2013 ' + b.getDate() + ' ' + MONTHS[b.getMonth()];
     var diffW = Math.round(diff(weekStart(now), k) / 7);
-    var name = diffW === 0 ? 'This week' : diffW === 1 ? 'Next week' : 'Week ' + isoWeek(k);
-    return name + ' \u00b7 ' + range;
+    var name = diffW === 0 ? 'This week' : diffW === 1 ? 'Next week' : diffW === -1 ? 'Last week' : 'Week of ' + a.getDate() + ' ' + MONTHS[a.getMonth()];
+    return diffW >= -1 && diffW <= 1 ? name + ' \u00b7 ' + range : name;
   }
 
   function applyView() {
@@ -409,10 +467,10 @@ footer { border-top: 1px solid var(--line); padding-top: 24px; }
     document.getElementById('mTitle').textContent = FULL[mM] + ' ' + mY;
     var byDay = {};
     list.forEach(function (t) { (byDay[t.date] = byDay[t.date] || []).push(t); });
-    var colors = { ahead: 'var(--accent)', today: 'var(--today)', done: 'var(--ok)', miss: 'var(--miss)' };
+    var colors = { ahead: 'var(--accent)', today: 'var(--today)', done: 'var(--ok)', miss: 'var(--miss)', mahead: 'var(--meet)', mtoday: 'var(--meet)', mpast: 'var(--miss)' };
     var grid = el('div', 'grid7');
-    ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].forEach(function (n) { grid.appendChild(el('div', 'wd', n)); });
-    var lead = (new Date(mY, mM, 1).getDay() + 6) % 7;
+    ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].forEach(function (n) { grid.appendChild(el('div', 'wd', n)); });
+    var lead = new Date(mY, mM, 1).getDay();
     var dim = new Date(mY, mM + 1, 0).getDate();
     var total = Math.ceil((lead + dim) / 7) * 7;
     for (var i = 0; i < total; i++) {
@@ -422,7 +480,7 @@ footer { border-top: 1px solid var(--line); padding-top: 24px; }
       c.setAttribute('aria-label', longDate(key) + (items.length ? ', ' + items.length + (items.length === 1 ? ' task' : ' tasks') : ''));
       c.appendChild(el('span', 'n', String(d.getDate())));
       var dots = el('span', 'dots');
-      items.slice(0, 3).forEach(function (t) { var dot = el('i'); dot.style.background = colors[t.st]; dots.appendChild(dot); });
+      items.slice(0, 3).forEach(function (t) { var dot = el('i'); dot.style.background = colors[t.st]; if (t.kind === 'meet') dot.style.borderRadius = '50%'; dots.appendChild(dot); });
       if (items.length > 3) dots.appendChild(el('em', null, '+' + (items.length - 3)));
       c.appendChild(dots);
       (function (k) { c.addEventListener('click', function () { selDay = k; render(); }); })(key);
@@ -432,16 +490,16 @@ footer { border-top: 1px solid var(--line); padding-top: 24px; }
     var head = el('div', 'dayhead');
     head.appendChild(el('h3', null, longDate(selDay)));
     if (selDay >= now) {
-      var add = el('button', null, 'Add a task on this date'); add.type = 'button';
+      var add = el('button', null, 'Add on this date'); add.type = 'button';
       add.addEventListener('click', function () {
-        dateInput.value = selDay;
-        var f = document.getElementById('fTitle');
+        dateInput.value = selDay; document.getElementById('mDate').value = selDay;
+        var f = document.getElementById(kind === 'meet' ? 'mWith' : 'fTitle');
         f.scrollIntoView({ behavior: 'smooth', block: 'center' }); f.focus({ preventScroll: true });
       });
       head.appendChild(add);
     }
     host.appendChild(head);
-    var sel = (byDay[selDay] || []);
+    var sel = (byDay[selDay] || []).slice().sort(function (a, b) { return (a.start || '') < (b.start || '') ? -1 : 1; });
     if (!sel.length) host.appendChild(el('p', 'empty-day', selDay < now ? 'Nothing was fixed for this day.' : 'Nothing fixed for this day.'));
     sel.forEach(function (t) { host.appendChild(makeRow(t, now)); });
   }
@@ -454,6 +512,12 @@ footer { border-top: 1px solid var(--line); padding-top: 24px; }
     if (t.date < now) { render(); return; }
     db.collection('tasks').doc(t.id).update({ done: true, doneOn: now }).catch(function () {});
   }
+  function onCancel(t) {
+    if (!db) return;
+    if (armed !== t.id) { armed = t.id; render(); setTimeout(function () { if (armed === t.id) { armed = null; render(); } }, 5000); return; }
+    armed = null;
+    db.collection('meetings').doc(t.id).delete().catch(function () {});
+  }
   function onRemove(t) {
     if (!db) return;
     if (!t.createdAt || Date.now() - t.createdAt >= TYPO_MS) { render(); return; }
@@ -462,7 +526,7 @@ footer { border-top: 1px solid var(--line); padding-top: 24px; }
 
   var form = document.getElementById('addForm'), err = document.getElementById('fErr');
   var dateInput = document.getElementById('fDate');
-  function setMin() { dateInput.min = today(); }
+  function setMin() { dateInput.min = today(); var m = document.getElementById('mDate'); if (m) m.min = today(); }
   setMin();
   form.addEventListener('submit', function (e) {
     e.preventDefault();
@@ -483,6 +547,37 @@ footer { border-top: 1px solid var(--line); padding-top: 24px; }
       .then(function () { saving = false; });
   });
 
+  function setKind(k) {
+    kind = k;
+    document.getElementById('addForm').hidden = k !== 'task';
+    document.getElementById('meetForm').hidden = k !== 'meet';
+    document.getElementById('kTask').setAttribute('aria-pressed', String(k === 'task'));
+    document.getElementById('kMeet').setAttribute('aria-pressed', String(k === 'meet'));
+  }
+  document.getElementById('kTask').addEventListener('click', function () { setKind('task'); });
+  document.getElementById('kMeet').addEventListener('click', function () { setKind('meet'); });
+  var mForm = document.getElementById('meetForm'), mErr = document.getElementById('mErr'), mDate = document.getElementById('mDate');
+  mForm.addEventListener('submit', function (e) {
+    e.preventDefault();
+    mErr.textContent = '';
+    if (!db) { mErr.textContent = 'Saving is not available in this view.'; return; }
+    var w = document.getElementById('mWith').value.trim(), topic = document.getElementById('mTopic').value.trim();
+    var date = mDate.value, from = document.getElementById('mFrom').value, to = document.getElementById('mTo').value;
+    var place = document.getElementById('mPlace').value.trim();
+    if (!w) { mErr.textContent = 'Say who the meeting is with.'; return; }
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) { mErr.textContent = 'Pick a date.'; return; }
+    if (date < today()) { mErr.textContent = 'The date is in the past.'; return; }
+    if (!/^\d{2}:\d{2}$/.test(from) || !/^\d{2}:\d{2}$/.test(to)) { mErr.textContent = 'Set both start and end time.'; return; }
+    if (to <= from) { mErr.textContent = 'The end must be after the start.'; return; }
+    if (saving) return;
+    saving = true;
+    var id = 'm' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+    db.collection('meetings').doc(id).set({ person: w, topic: topic, date: date, start: from, end: to, place: place, createdAt: Date.now() })
+      .then(function () { mForm.reset(); mDate.min = today(); })
+      .catch(function () { mErr.textContent = 'Could not save. Meetings need the updated rules (SETUP.md, step 6).'; })
+      .then(function () { saving = false; });
+  });
+
   function setView(v) { view = v; try { localStorage.setItem('fd-view', v); } catch (e) {} applyView(); }
   document.getElementById('vSchedule').addEventListener('click', function () { setView('schedule'); });
   document.getElementById('vMonth').addEventListener('click', function () { setView('month'); });
@@ -497,7 +592,8 @@ footer { border-top: 1px solid var(--line); padding-top: 24px; }
   window.FD = {
     setDb: function (d) { db = d; document.getElementById('fSubmit').disabled = !d; },
     setTasks: function (list) { tasks = list.filter(function (v) { return v.title && v.date; }); render(); },
-    setError: function (m) { err.textContent = m; }
+    setMeetings: function (list) { meetings = list.filter(function (v) { return v.person && v.date && v.start && v.end; }); render(); },
+    setError: function (m) { err.textContent = m; document.getElementById('mErr').textContent = m; }
   };
 })();
 </script>
@@ -520,7 +616,7 @@ const fs = getFirestore(app);
 const gate = document.getElementById('gate');
 const appEl = document.getElementById('app');
 const gateErr = document.getElementById('gateErr');
-let unsub = null;
+let unsub = null, unsubM = null;
 
 document.getElementById('signIn').addEventListener('click', async () => {
   gateErr.textContent = '';
@@ -531,14 +627,15 @@ document.getElementById('signOut').addEventListener('click', () => signOut(auth)
 
 onAuthStateChanged(auth, (user) => {
   if (unsub) { unsub(); unsub = null; }
+  if (unsubM) { unsubM(); unsubM = null; }
   if (!user) { gate.hidden = false; appEl.hidden = true; window.FD.setDb(null); return; }
   gate.hidden = true; appEl.hidden = false;
   window.FD.setDb({
-    collection: () => ({
+    collection: (name) => ({
       doc: (id) => ({
-        set: (d) => setDoc(doc(fs, 'tasks', id), d),
-        update: (d) => updateDoc(doc(fs, 'tasks', id), d),
-        delete: () => deleteDoc(doc(fs, 'tasks', id))
+        set: (d) => setDoc(doc(fs, name, id), d),
+        update: (d) => updateDoc(doc(fs, name, id), d),
+        delete: () => deleteDoc(doc(fs, name, id))
       })
     })
   });
@@ -547,6 +644,9 @@ onAuthStateChanged(auth, (user) => {
     (e) => window.FD.setError(e.code === 'permission-denied'
       ? 'This Google account is not allowed to open the list. Check the email in firestore.rules.'
       : 'Live updates stopped. Reload the page.'));
+  unsubM = onSnapshot(collection(fs, 'meetings'),
+    (snap) => window.FD.setMeetings(snap.docs.map((d) => Object.assign({ id: d.id }, d.data()))),
+    () => window.FD.setError('Meetings are not available yet. Publish the updated rules (SETUP.md, step 6).'));
 });
 </script>
 </body>
