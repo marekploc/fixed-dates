@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0a0a0a">
 <link rel="manifest" href="manifest.json">
-<link rel="icon" type="image/png" href="icon-192.png">
-<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="icon" type="image/png" href="icon-v2-192.png">
+<link rel="apple-touch-icon" href="icon-v2-192.png">
 <title>Fixed Dates</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -117,6 +117,34 @@ section.group > .mono { display: flex; justify-content: space-between; padding-b
 .lists { display: grid; gap: 56px; }
 footer { border-top: 1px solid var(--line); padding-top: 24px; }
 
+
+.views { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 28px; }
+.seg { display: inline-flex; border: 1px solid var(--line); }
+.seg button { border: none; border-right: 1px solid var(--line); background: transparent; color: var(--muted); padding: 12px 22px; }
+.seg button:last-child { border-right: none; }
+.seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); font-weight: 500; }
+.cal-nav { display: flex; align-items: center; gap: 8px; }
+.cal-nav .ttl { font-weight: 300; font-size: clamp(22px, 4vw, 34px); letter-spacing: -.02em; min-width: 9ch; text-align: center; padding-inline: 8px; }
+.cal-nav button { padding: 10px 14px; }
+.grid7 { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); border-top: 1px solid var(--line); border-left: 1px solid var(--line); }
+.grid7 > * { border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.wd { padding: 10px 8px; font-family: var(--f-mono); font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+.cell { display: flex; flex-direction: column; justify-content: space-between; align-items: flex-start; gap: 6px; min-height: clamp(58px, 11vw, 104px); padding: 8px; background: transparent; border-radius: 0; text-align: left; color: var(--ink); letter-spacing: 0; text-transform: none; font-family: var(--f-body); font-size: 15px; font-weight: 300; }
+.cell:hover { background: var(--surface); }
+.cell.out { color: #55554f; }
+.cell.past:not(.has) { color: #55554f; }
+.cell.isToday { box-shadow: inset 0 0 0 1px var(--ink); }
+.cell.sel { background: var(--surface-2); box-shadow: inset 0 0 0 2px var(--accent); }
+.cell .n { font-variant-numeric: tabular-nums; }
+.cell .dots { display: flex; gap: 4px; flex-wrap: wrap; align-items: center; }
+.cell .dots i { width: 8px; height: 8px; display: inline-block; }
+.cell .dots em { font-style: normal; font-family: var(--f-mono); font-size: 10px; color: var(--muted); }
+.dayhead { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; padding: 28px 0 14px; border-bottom: 1px solid var(--line); }
+.dayhead h3 { margin: 0; font-weight: 300; font-size: clamp(22px, 4vw, 32px); letter-spacing: -.02em; }
+.empty-day { color: var(--muted); margin: 18px 0 0; }
+#month[hidden], #lists[hidden], .cal-nav[hidden] { display: none !important; }
+@media (max-width: 600px) { .seg button { padding: 11px 16px; } .cell { padding: 6px; font-size: 14px; } }
+
 .gate { max-width: 1040px; margin: 0 auto; padding-block: 80px; display: grid; gap: 28px; justify-items: start; }
 #app[hidden], .gate[hidden] { display: none !important; }
 </style>
@@ -176,7 +204,23 @@ footer { border-top: 1px solid var(--line); padding-top: 24px; }
 
   </div>
 
-  <div id="lists" class="lists"></div>
+  <div>
+    <div class="sec-head"><span class="eyebrow">// 02 Calendar</span><h2>Your fixed dates</h2></div>
+    <div class="views">
+      <div class="seg" role="group" aria-label="View">
+        <button type="button" id="vSchedule" aria-pressed="true">Schedule</button>
+        <button type="button" id="vMonth" aria-pressed="false">Month</button>
+      </div>
+      <div class="cal-nav" id="calNav" hidden>
+        <button type="button" id="mPrev" aria-label="Previous month">&larr;</button>
+        <span class="ttl" id="mTitle"></span>
+        <button type="button" id="mNext" aria-label="Next month">&rarr;</button>
+        <button type="button" id="mToday">Today</button>
+      </div>
+    </div>
+    <div id="lists" class="lists"></div>
+    <div id="month" hidden></div>
+  </div>
 </div>
 
 </div>
@@ -186,6 +230,8 @@ footer { border-top: 1px solid var(--line); padding-top: 24px; }
   var DAYS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
   var TYPO_MS = 15 * 60 * 1000;
   var db = null, tasks = [], armed = null, saving = false;
+  var view = 'schedule', selDay = null, mY = null, mM = null;
+  try { if (localStorage.getItem('fd-view') === 'month') view = 'month'; } catch (e) {}
 
   function pad(n) { return String(n).padStart(2, '0'); }
   function ymd(d) { return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
@@ -265,7 +311,7 @@ footer { border-top: 1px solid var(--line); padding-top: 24px; }
     var d = parse(t.date);
     var date = el('div', 'date');
     date.appendChild(el('span', 'd', String(d.getDate())));
-    date.appendChild(el('span', 'm', MONTHS[d.getMonth()] + ' ' + String(d.getFullYear()).slice(2)));
+    date.appendChild(el('span', 'm', MONTHS[d.getMonth()] + ' ' + d.getFullYear()));
     var body = el('div', 'body');
     body.appendChild(el('h3', null, t.title));
     var sub = DAYS[d.getDay()] + (t.note ? ' · ' + t.note : '');
@@ -317,10 +363,87 @@ footer { border-top: 1px solid var(--line); padding-top: 24px; }
     document.getElementById('nMiss').textContent = by('miss').length;
     var host = document.getElementById('lists');
     host.innerHTML = '';
-    
-    [group('Today', by('today'), now), group('Ahead', by('ahead').sort(asc), now),
-     group('Done', by('done').sort(desc), now), group('Missed', by('miss').sort(desc), now)]
-      .forEach(function (g) { if (g) host.appendChild(g); });
+    var weeks = {}, order = [];
+    by('ahead').sort(asc).forEach(function (t) {
+      var k = weekStart(t.date);
+      if (!weeks[k]) { weeks[k] = []; order.push(k); }
+      weeks[k].push(t);
+    });
+    var groups = [group('Today', by('today'), now)];
+    order.forEach(function (k) { groups.push(group(weekLabel(k, now), weeks[k], now)); });
+    groups.push(group('Done', by('done').sort(desc), now), group('Missed', by('miss').sort(desc), now));
+    groups.forEach(function (g) { if (g) host.appendChild(g); });
+    renderMonth(list, now);
+    applyView();
+  }
+
+  function weekStart(s) { var d = parse(s); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return ymd(d); }
+  function isoWeek(s) {
+    var d = parse(s); d.setDate(d.getDate() + 3 - ((d.getDay() + 6) % 7));
+    var w1 = new Date(d.getFullYear(), 0, 4);
+    return 1 + Math.round(((d - w1) / 86400000 - 3 + ((w1.getDay() + 6) % 7)) / 7);
+  }
+  function weekLabel(k, now) {
+    var a = parse(k), b = parse(k); b.setDate(b.getDate() + 6);
+    var range = a.getDate() + (a.getMonth() !== b.getMonth() ? ' ' + MONTHS[a.getMonth()] : '') + ' \u2013 ' + b.getDate() + ' ' + MONTHS[b.getMonth()];
+    var diffW = Math.round(diff(weekStart(now), k) / 7);
+    var name = diffW === 0 ? 'This week' : diffW === 1 ? 'Next week' : 'Week ' + isoWeek(k);
+    return name + ' \u00b7 ' + range;
+  }
+
+  function applyView() {
+    var m = view === 'month';
+    document.getElementById('lists').hidden = m;
+    document.getElementById('month').hidden = !m;
+    document.getElementById('calNav').hidden = !m;
+    document.getElementById('vSchedule').setAttribute('aria-pressed', String(!m));
+    document.getElementById('vMonth').setAttribute('aria-pressed', String(m));
+  }
+
+  function renderMonth(list, now) {
+    var host = document.getElementById('month');
+    host.innerHTML = '';
+    if (mY === null) { var t0 = parse(now); mY = t0.getFullYear(); mM = t0.getMonth(); }
+    if (!selDay) selDay = now;
+    var FULL = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+    document.getElementById('mTitle').textContent = FULL[mM] + ' ' + mY;
+    var byDay = {};
+    list.forEach(function (t) { (byDay[t.date] = byDay[t.date] || []).push(t); });
+    var colors = { ahead: 'var(--accent)', today: 'var(--today)', done: 'var(--ok)', miss: 'var(--miss)' };
+    var grid = el('div', 'grid7');
+    ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].forEach(function (n) { grid.appendChild(el('div', 'wd', n)); });
+    var lead = (new Date(mY, mM, 1).getDay() + 6) % 7;
+    var dim = new Date(mY, mM + 1, 0).getDate();
+    var total = Math.ceil((lead + dim) / 7) * 7;
+    for (var i = 0; i < total; i++) {
+      var d = new Date(mY, mM, 1 - lead + i), key = ymd(d), items = byDay[key] || [];
+      var c = el('button', 'cell' + (d.getMonth() !== mM ? ' out' : '') + (key < now ? ' past' : '') + (key === now ? ' isToday' : '') + (key === selDay ? ' sel' : '') + (items.length ? ' has' : ''));
+      c.type = 'button';
+      c.setAttribute('aria-label', longDate(key) + (items.length ? ', ' + items.length + (items.length === 1 ? ' task' : ' tasks') : ''));
+      c.appendChild(el('span', 'n', String(d.getDate())));
+      var dots = el('span', 'dots');
+      items.slice(0, 3).forEach(function (t) { var dot = el('i'); dot.style.background = colors[t.st]; dots.appendChild(dot); });
+      if (items.length > 3) dots.appendChild(el('em', null, '+' + (items.length - 3)));
+      c.appendChild(dots);
+      (function (k) { c.addEventListener('click', function () { selDay = k; render(); }); })(key);
+      grid.appendChild(c);
+    }
+    host.appendChild(grid);
+    var head = el('div', 'dayhead');
+    head.appendChild(el('h3', null, longDate(selDay)));
+    if (selDay >= now) {
+      var add = el('button', null, 'Add a task on this date'); add.type = 'button';
+      add.addEventListener('click', function () {
+        dateInput.value = selDay;
+        var f = document.getElementById('fTitle');
+        f.scrollIntoView({ behavior: 'smooth', block: 'center' }); f.focus({ preventScroll: true });
+      });
+      head.appendChild(add);
+    }
+    host.appendChild(head);
+    var sel = (byDay[selDay] || []);
+    if (!sel.length) host.appendChild(el('p', 'empty-day', selDay < now ? 'Nothing was fixed for this day.' : 'Nothing fixed for this day.'));
+    sel.forEach(function (t) { host.appendChild(makeRow(t, now)); });
   }
 
   function onDone(t) {
@@ -359,6 +482,14 @@ footer { border-top: 1px solid var(--line); padding-top: 24px; }
       .catch(function () { err.textContent = 'Could not save. Try again in a moment.'; })
       .then(function () { saving = false; });
   });
+
+  function setView(v) { view = v; try { localStorage.setItem('fd-view', v); } catch (e) {} applyView(); }
+  document.getElementById('vSchedule').addEventListener('click', function () { setView('schedule'); });
+  document.getElementById('vMonth').addEventListener('click', function () { setView('month'); });
+  function shift(n) { var d = new Date(mY, mM + n, 1); mY = d.getFullYear(); mM = d.getMonth(); render(); }
+  document.getElementById('mPrev').addEventListener('click', function () { shift(-1); });
+  document.getElementById('mNext').addEventListener('click', function () { shift(1); });
+  document.getElementById('mToday').addEventListener('click', function () { var n = parse(today()); mY = n.getFullYear(); mM = n.getMonth(); selDay = today(); render(); });
 
   render();
   setInterval(function () { setMin(); render(); }, 60000);
